@@ -6,5 +6,9 @@ from django.core import management
 class Command(management.base.BaseCommand):
     help = 'run server at the specified host:port'
 
+    def add_arguments(self, parser) -> None:
+        parser.add_argument('dev')
+
     def handle(self, *args: Any, **options: Any) -> Optional[str]:
-        management.call_command('runserver','0.0.0.0:30000')
+        if options['dev']:
+            management.call_command('runserver','0.0.0.0:30000')
