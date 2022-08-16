@@ -2,6 +2,12 @@
 
 > Library reference
 >
+> [Setting up Django and your web server with uWSGI and nginx — uWSGI 2.0 documentation (uwsgi-docs.readthedocs.io)](https://uwsgi-docs.readthedocs.io/en/latest/tutorials/Django_and_nginx.html)
+>
+> [First steps with Django — Celery 5.2.7 documentation (celeryq.dev)](https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html)
+>
+> [celery/examples/django at master · celery/celery (github.com)](https://github.com/celery/celery/tree/master/examples/django/)
+>
 > [Etuloser/e-dockerfile: Store my dockerfile (github.com)](https://github.com/Etuloser/e-dockerfile)
 >
 > [Etuloser/drf-example (github.com)](https://github.com/Etuloser/drf-example)
@@ -11,7 +17,6 @@
 ### 初始化项目
 
 ```bash
-
 cd /srv
 mkdir drf-example
 cd drf-example
@@ -23,6 +28,7 @@ python3 manage.py migrate
 python3 manage.py createsuperuser --email admin@example.com --username admin
 
 pip install django-simpleui
+python3 manage.py collectstatic
 ```
 
 *demo.settings*
@@ -41,6 +47,72 @@ REST_FRAMEWORK = {
 }
 ```
 
+*demo.app.serializers*
+
+```python
+from django.contrib.auth.models import User, Group
+from rest_framework import serializers
+
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = User
+        fields = ['url', 'username', 'email', 'groups']
+
+
+class GroupSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Group
+        fields = ['url', 'name']
+```
+
+*demo.app.views*
+
+```python
+from django.contrib.auth.models import Group, User
+from rest_framework import permissions, viewsets
+from .serializers import GroupSerializer, UserSerializer
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+```
+
+*demo.urls*
+
+```python
+from django.contrib import admin
+from django.urls import include, path
+from rest_framework import routers
+from demo.app import views as app_views
+
+router = routers.DefaultRouter()
+router.register(r'users', app_views.UserViewSet)
+router.register(r'groups', app_views.GroupViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('admin/', admin.site.urls),
+]
+
+```
+
 ### NGINX配置
 
 这里使用NGINX容器，YAML文件链接：
@@ -55,14 +127,18 @@ nginx配置文件链接：
 
 ```nginx
 upstream django {
-    server unix:///srv/drf-example/demo/demo.sock; # for a file socket
+    server unix:///srv/drf-example/demo.sock; # for a file socket
     # server 0.0.0.0:30000; # for a web port socket (we'll use this first)
 }
 
 server {
     listen       80;
     ...
-    # Django app
+    location /static {
+        alias /srv/drf-example/static; # your Django project's static files - amend as required
+    }
+    
+    # Finally, send all non-media requests to the Django server.
     location / {
         uwsgi_pass  django;
         include     /etc/nginx/uwsgi_params; # the uwsgi_params file you installed
@@ -74,27 +150,164 @@ server {
 ### uWSGI配置
 
 ```bash
+# 安装
 pip install uwsgi
 ```
 
 配置文件链接：
 
-*[drf-example/uwsgi.ini at main · Etuloser/drf-example (github.com)](https://github.com/Etuloser/drf-example/blob/main/demo/uwsgi.ini)*
+*[drf-example/uwsgi.ini at main · Etuloser/drf-example (github.com)](https://github.com/Etuloser/drf-example/blob/main/uwsgi.ini)*
 
 关键配置如下：
 
 ```ini
 [uwsgi]
-; socket = 0.0.0.0:30000
-socket = /srv/drf-example/demo/demo.sock
+socket = /srv/drf-example/demo.sock
 chdir = /srv/drf-example
-; wsgi-file = demo/wsgi.py
 module = demo.wsgi
 master = true
-; env = DJANGO_SETTINGS_MODULE=demo.settings
 processes = 4
 chmod-socket = 666
-; threads = 2
-; stats = 0.0.0.0:30001
+```
+
+### supervisord配置
+
+```bash
+# 安装
+pip install supervisord
+# 初始化配置文件
+echo_supervisord_conf > /etc/supervisor/supervisord.conf
+```
+
+*/etc/supervisor/supervisord.conf*
+
+关键配置如下
+
+```ini
+...
+[inet_http_server]          ; inet (TCP) server disabled by default
+port=*:30091                 ; ip_address:port specifier, *:port for all iface
+username=admin               ; default is no username (open server)
+password=youpass
+...
+[include]
+files = /srv/drf-example/supervisord.ini
+```
+
+*/srv/drf-example/supervisord.ini*
+
+```ini
+[program:drf-example]
+command = uwsgi --ini uwsgi.ini
+directory=/srv/drf-example
+stdout_logfile=/srv/drf-example/logs/stdout.log
+autostart=true
+autorestart=true
+user=root
+startsecs=3
+# 启动优先级
+priority=998
+
+[program:drf-example-celery]
+command = celery -A demo worker -l INFO
+directory=/srv/drf-example
+stdout_logfile=/srv/drf-example/logs/celery.log
+autostart=true
+autorestart=true
+user=root
+startsecs=3
+priority=999
+
+[program:drf-example-flower]
+command = celery -A demo flower --port=30555
+directory=/srv/drf-example
+stdout_logfile=/srv/drf-example/logs/flower.log
+autostart=true
+autorestart=true
+user=root
+startsecs=3
+priority=997
+```
+
+### rabbitmq配置
+
+这里使用rabbitmq容器，YAML文件链接：
+
+*[e-dockerfile/docker-compose.yml at master · Etuloser/e-dockerfile (github.com)](https://github.com/Etuloser/e-dockerfile/blob/master/rabbitmq/docker-compose.yml)*
+
+因为部署的是带插件的版本，可以访问http://ip:15672进入管理界面
+
+![image-20220816213311910](D:\develop\OneDrive\图片\文章截图\image-20220816213311910.png)
+
+进入容器配置一下rabbitmq
+
+```bash
+rabbitmqctl add_user myuser mypassword
+rabbitmqctl add_vhost myvhost
+rabbitmqctl set_user_tags myuser mytag
+rabbitmqctl set_permissions -p myvhost myuser ".*" ".*" ".*"
+```
+
+### celery配置
+
+```bash
+# 安装celery和flower(监控)
+pip install celery flower
+```
+
+*demo.celery*
+
+```python
+import os
+
+from celery import Celery
+
+# Set the default Django settings module for the 'celery' program.
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'demo.settings')
+
+app = Celery('demo')
+
+# Using a string here means the worker doesn't have to serialize
+# the configuration object to child processes.
+# - namespace='CELERY' means all celery-related configuration keys
+#   should have a `CELERY_` prefix.
+app.config_from_object('django.conf:settings', namespace='CELERY')
+
+# Load task modules from all registered Django apps.
+app.autodiscover_tasks()
+
+
+@app.task(bind=True)
+def debug_task(self):
+    print(f'Request: {self.request!r}')
+```
+
+*demo.settings*
+
+```python
+# celery settings
+CELERY_BROKER_URL = 'amqp://myuser:mypassword@119.91.25.133:30567/myvhost'
+
+#: Only add pickle to this list if your broker is secured
+#: from unwanted access (see userguide/security.html)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_RESULT_BACKEND = 'rpc://myuser:mypassword@119.91.25.133:30567/myvhost'
+CELERY_TASK_SERIALIZER = 'json'
+```
+
+同样，flower的web界面地址为http://ip:30555
+
+![image-20220816215547875](D:\develop\OneDrive\图片\文章截图\image-20220816215547875.png)
+
+可以看到已经读到celery了
+
+测试调用一下task
+
+```python
+$ python ./manage.py shell
+>>> from demoapp.tasks import add, mul, xsum
+>>> res = add.delay(2,3)
+>>> res.get()
+5
 ```
 
