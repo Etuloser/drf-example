@@ -16,6 +16,29 @@ cd /srv
 mkdir drf-example
 cd drf-example
 django-admin startproject demo .  # note .
+cd demo
+django-admin startapp app
+cd ..
+python3 manage.py migrate
+python3 manage.py createsuperuser --email admin@example.com --username admin
+
+pip install django-simpleui
+```
+
+*demo.settings*
+```python
+ALLOWED_HOSTS = ['*']
+
+LANGUAGE_CODE = 'zh-hans'
+
+TIME_ZONE = 'Asia/Shanghai'
+
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
+}
 ```
 
 ### NGINX配置
