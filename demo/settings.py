@@ -24,6 +24,7 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
@@ -49,7 +50,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'demo.app'
+    'django_celery_results',
+    'demo.app',
 ]
 
 MIDDLEWARE = [
@@ -90,6 +92,17 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+
+# Database Cache
+# https://docs.djangoproject.com/zh-hans/4.1/topics/cache/
+# python3 manage.py createcachetable
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'my_cache_table',
     }
 }
 
@@ -144,10 +157,9 @@ REST_FRAMEWORK = {
 }
 
 # celery settings
-CELERY_BROKER_URL = env('CELERY_BROKER_URL')
-
-#: Only add pickle to this list if your broker is secured
-#: from unwanted access (see userguide/security.html)
+CELERY_BROKER_URL = env.str('CELERY_BROKER_URL')
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+CELERY_RESULT_BACKEND = 'django-db'
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_EXTENDED = True
+CELERY_CACHE_BACKEND = 'django-cache'

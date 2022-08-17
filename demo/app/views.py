@@ -1,5 +1,8 @@
+from demo.app.tasks import add
 from django.contrib.auth.models import Group, User
+from django.http import JsonResponse
 from rest_framework import permissions, viewsets
+
 from .serializers import GroupSerializer, UserSerializer
 
 
@@ -19,3 +22,18 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+def index(request):
+    return JsonResponse({
+        'code': 200,
+        'msg': 'success'
+    })
+
+
+def add_delay(request):
+    res = add.delay(10, 10)
+    return JsonResponse({
+        'code': 200,
+        'msg': 'success'
+    })
