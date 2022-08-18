@@ -21,10 +21,11 @@ from demo.app import views as app_views
 router = routers.DefaultRouter()
 router.register(r'users', app_views.UserViewSet)
 router.register(r'groups', app_views.GroupViewSet)
+router.register(r'tasks', app_views.TaskResultViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
-    path('app/',include('demo.app.urls'))
+    path('add/', app_views.AddTask.as_view(), name='add'),
 ]
