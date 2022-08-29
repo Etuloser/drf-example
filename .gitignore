@@ -30,7 +30,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 static/
-meida/
+media/
 vendor/
 
 # PyInstaller
