@@ -1,13 +1,9 @@
-from demo.app.tasks import add
 from django.contrib.auth.models import Group, User
 from django_celery_results.models import TaskResult
-from rest_framework import permissions, viewsets
-from rest_framework.response import Response
-from rest_framework.reverse import reverse_lazy
-from rest_framework.views import APIView
+from django.http import FileResponse
+from rest_framework import permissions,  viewsets, decorators
 
-from .serializers import (GroupSerializer, MyRespSerializer,
-                          TaskResultSerializer, UserSerializer)
+from demo.app import serializers, models
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -15,7 +11,7 @@ class UserViewSet(viewsets.ModelViewSet):
     API endpoint that allows users to be viewed or edited.
     """
     queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
+    serializer_class = serializers.UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
@@ -24,43 +20,25 @@ class GroupViewSet(viewsets.ModelViewSet):
     API endpoint that allows groups to be viewed or edited.
     """
     queryset = Group.objects.all()
-    serializer_class = GroupSerializer
+    serializer_class = serializers.GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
 class TaskResultViewSet(viewsets.ModelViewSet):
     queryset = TaskResult.objects.all()
-    serializer_class = TaskResultSerializer
+    serializer_class = serializers.TaskResultSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'task_id'
 
 
-class AddTask(APIView):
-    """
-    View to delay add task.
-    """
+class MyModelViewSet(viewsets.ModelViewSet):
+    queryset = models.MyModel.objects.all()
+    serializer_class = serializers.MyModelSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, format=None):
-        """
-        Return add task id
-        """
-        result = add.apply_async((2, 2), countdown=5)
-        serializer = MyRespSerializer(data={
-            'data': [
-                {
-                    'task_id': result.task_id,
-                    'url': f"{reverse_lazy('api-root', request=request)}tasks/{result.task_id}/"
-                }
-            ],
-            'ret_code': 200,
-            'ret_info': result.status,
-        })
-        if serializer.is_valid():
-            return Response(serializer.data)
-        else:
-            return Response({
-                'data': '',
-                'ret_code': 500,
-                'ret_info': serializer.errors
-            })
+    @decorators.action(methods=['post'], detail=True)
+    def download(self, request, pk=None, *args, **kwargs):
+        file_obj = self.get_object()
+        response = FileResponse(
+            open(file_obj.upload.path, 'rb'), as_attachment=True)
+        return response
