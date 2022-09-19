@@ -1,0 +1,29 @@
+---
+version: "3"
+
+networks:
+  web:
+
+services:
+
+  edrf:
+    image: "edrf:1.0.0"
+    restart: always
+    ports:
+      - 30081:30081
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /srv/edrf:/srv/edrf
+    networks:
+      - web
+
+  gateway:
+    image: "nginx:alpine"
+    restart: always
+    ports:
+      - 30080:30080
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - web

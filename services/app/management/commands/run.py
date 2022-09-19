@@ -11,4 +11,4 @@ class Command(management.base.BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> Optional[str]:
         if options['dev']:
-            management.call_command('runserver','0.0.0.0:30000')
+            management.call_command('runserver','0.0.0.0:30081')

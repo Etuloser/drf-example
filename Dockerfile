@@ -1,6 +1,6 @@
 FROM python:latest
 
-WORKDIR /srv/drf-example
+WORKDIR /srv/edrf
 
 COPY requirements.txt ./
 
@@ -9,4 +9,4 @@ RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
 
 COPY . .
 
-CMD [ "python", "manage.py", "run", "dev"]
+CMD [ "uwsgi", "--ini", "uwsgi.ini"]

@@ -1,4 +1,4 @@
-"""demo URL Configuration
+"""services URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.1/topics/http/urls/
@@ -19,7 +19,7 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import (TokenObtainPairView,
                                             TokenRefreshView)
 
-from demo.app import views as app_views
+from services.app import views as app_views
 
 router = routers.DefaultRouter()
 router.register(r'users', app_views.UserViewSet)

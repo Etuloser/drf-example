@@ -20,8 +20,8 @@
 cd /srv
 mkdir drf-example
 cd drf-example
-django-admin startproject demo .  # note .
-cd demo
+django-admin startproject services .  # note .
+cd services
 django-admin startapp app
 cd ..
 python3 manage.py migrate
@@ -31,7 +31,7 @@ pip install django-simpleui
 python3 manage.py collectstatic
 ```
 
-*demo.settings*
+*services.settings*
 ```python
 ALLOWED_HOSTS = ['*']
 
@@ -47,7 +47,7 @@ REST_FRAMEWORK = {
 }
 ```
 
-*demo.app.serializers*
+*services.app.serializers*
 
 ```python
 from django.contrib.auth.models import User, Group
@@ -66,7 +66,7 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['url', 'name']
 ```
 
-*demo.app.views*
+*services.app.views*
 
 ```python
 from django.contrib.auth.models import Group, User
@@ -93,13 +93,13 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 ```
 
-*demo.urls*
+*services.urls*
 
 ```python
 from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
-from demo.app import views as app_views
+from services.app import views as app_views
 
 router = routers.DefaultRouter()
 router.register(r'users', app_views.UserViewSet)
@@ -127,7 +127,7 @@ nginx配置文件链接：
 
 ```nginx
 upstream django {
-    server unix:///srv/drf-example/demo.sock; # for a file socket
+    server unix:///srv/drf-example/services.sock; # for a file socket
     # server 0.0.0.0:30000; # for a web port socket (we'll use this first)
 }
 
@@ -162,9 +162,9 @@ pip install uwsgi
 
 ```ini
 [uwsgi]
-socket = /srv/drf-example/demo.sock
+socket = /srv/drf-example/services.sock
 chdir = /srv/drf-example
-module = demo.wsgi
+module = services.wsgi
 master = true
 processes = 4
 chmod-socket = 666
@@ -209,7 +209,7 @@ startsecs=3
 priority=998
 
 [program:drf-example-celery]
-command = celery -A demo worker -l INFO
+command = celery -A services worker -l INFO
 directory=/srv/drf-example
 stdout_logfile=/srv/drf-example/logs/celery.log
 autostart=true
@@ -219,7 +219,7 @@ startsecs=3
 priority=999
 
 [program:drf-example-flower]
-command = celery -A demo flower --port=30555
+command = celery -A services flower --port=30555
 directory=/srv/drf-example
 stdout_logfile=/srv/drf-example/logs/flower.log
 autostart=true
@@ -255,7 +255,7 @@ rabbitmqctl set_permissions -p myvhost myuser ".*" ".*" ".*"
 pip install celery flower
 ```
 
-*demo.celery*
+*services.celery*
 
 ```python
 import os
@@ -263,9 +263,9 @@ import os
 from celery import Celery
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'demo.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'services.settings')
 
-app = Celery('demo')
+app = Celery('services')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
@@ -282,7 +282,7 @@ def debug_task(self):
     print(f'Request: {self.request!r}')
 ```
 
-*demo.settings*
+*services.settings*
 
 ```python
 # celery settings
@@ -305,7 +305,7 @@ CELERY_TASK_SERIALIZER = 'json'
 
 ```python
 $ python ./manage.py shell
->>> from demoapp.tasks import add, mul, xsum
+>>> from servicesapp.tasks import add, mul, xsum
 >>> res = add.delay(2,3)
 >>> res.get()
 5

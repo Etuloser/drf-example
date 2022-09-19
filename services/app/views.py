@@ -3,7 +3,7 @@ from django_celery_results.models import TaskResult
 from django.http import FileResponse
 from rest_framework import permissions,  viewsets, decorators
 
-from demo.app import serializers, models
+from services.app import serializers, models
 
 
 class UserViewSet(viewsets.ModelViewSet):

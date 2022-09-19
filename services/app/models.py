@@ -7,3 +7,6 @@ class MyModel(models.Model):
     upload = models.FileField(upload_to='uploads/')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(default=timezone.now)
+
+    # class Meta:
+    #     ordering = ['updated_at']
