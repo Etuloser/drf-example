@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
 from django.core import management
+from server.settings import env
 
 
 class Command(management.base.BaseCommand):
@@ -11,4 +12,5 @@ class Command(management.base.BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> Optional[str]:
         if options['dev']:
-            management.call_command('runserver','0.0.0.0:30081')
+            print(env.__dict__)
+            management.call_command('runserver',f"0.0.0.0:{env.str('PORT')}")

@@ -18,16 +18,15 @@
 
 ```bash
 cd /srv
-mkdir drf-example
-cd drf-example
-django-admin startproject services .  # note .
-cd services
-django-admin startapp app
+mkdir dr
+cd drf
+django-admin startproject server .  # note .
+cd server
+django-admin startapp core
 cd ..
 python3 manage.py migrate
 python3 manage.py createsuperuser --email admin@example.com --username admin
 
-pip install django-simpleui
 python3 manage.py collectstatic
 ```
 

@@ -2,7 +2,7 @@ from django.contrib.auth.models import Group, User
 from django_celery_results.models import TaskResult
 from rest_framework import serializers
 
-from services.app.models import MyModel
+from server.core.models import MyModel
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
